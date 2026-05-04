@@ -55,6 +55,7 @@ export function FavoriteButton({
           : "bg-white text-gray-700 hover:bg-gray-100"
       } ${compact ? "h-9 w-9 text-lg" : "gap-2 px-4 py-2 text-sm"}`}
     >
+      <span>{isFavorite ? "♥" : "♡"}</span>
       {!compact && (
         <span>
           {favoriteMutation.isPending
