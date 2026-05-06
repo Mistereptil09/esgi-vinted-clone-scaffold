@@ -1,57 +1,121 @@
 import { useQuery } from "@tanstack/react-query";
-import type { Article } from "../types/article";
-import { SearchBar } from "../components/SearchBar";
 import { useState } from "react";
 import { api } from "../services/api";
+import { CATEGORIES, CONDITIONS, type Article } from "../types/article";
+import { SearchBar } from "../components/SearchBar";
 import { ArticleCard } from "../components/ArticleCard";
 
 export default function CataloguePage() {
-  const [searchValue, setSearchValue] = useState("");
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("");
+  const [condition, setCondition] = useState("");
+  const [priceMin, setPriceMin] = useState("");
+  const [priceMax, setPriceMax] = useState("");
+  const [sort, setSort] = useState("date_desc");
+
+  const params = new URLSearchParams();
+  if (search) params.set("search", search);
+  if (category) params.set("category", category);
+  if (condition) params.set("condition", condition);
+  if (priceMin) params.set("priceMin", priceMin);
+  if (priceMax) params.set("priceMax", priceMax);
+  if (sort) params.set("sort", sort);
+  const queryString = params.toString();
 
   const { isPending, error, data } = useQuery<Article[]>({
-    queryKey: ["articles"],
-    queryFn: () => api.get<Article[]>("/api/articles"),
-  });
-
-  if (isPending) {
-    return <div className="text-center py-10">Chargement...</div>;
-  }
-
-  if (error instanceof Error) {
-    return (
-      <div className="text-center py-10 text-red-600">
-        <h1 className="text-xl font-bold">Erreur</h1>
-        <p>{error.message}</p>
-      </div>
-    );
-  }
-
-  const filteredArticles = (data ?? []).filter((item: Article) => {
-    const search = searchValue.toLowerCase();
-
-    return (
-      item.title.toLowerCase().includes(search) ||
-      item.description.toLowerCase().includes(search)
-    );
+    queryKey: [
+      "articles",
+      { search, category, condition, priceMin, priceMax, sort },
+    ],
+    queryFn: () =>
+      api.get<Article[]>(
+        `/api/articles${queryString ? `?${queryString}` : ""}`,
+      ),
   });
 
   return (
     <div>
-      <div className="mb-6 max-w-md mx-auto">
+      <h1 className="text-2xl font-bold mb-4">Catalogue</h1>
+
+      <div className="bg-white p-4 rounded-lg shadow mb-6 space-y-3">
         <SearchBar
-          value={searchValue}
-          onChange={setSearchValue}
+          value={search}
+          onChange={setSearch}
           placeholder="Rechercher un article..."
         />
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="border rounded px-2 py-1"
+          >
+            <option value="">Toutes les catégories</option>
+            {CATEGORIES.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={condition}
+            onChange={(e) => setCondition(e.target.value)}
+            className="border rounded px-2 py-1"
+          >
+            <option value="">Tous les états</option>
+            {CONDITIONS.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+
+          <input
+            type="number"
+            min="0"
+            value={priceMin}
+            onChange={(e) => setPriceMin(e.target.value)}
+            placeholder="Prix min"
+            className="border rounded px-2 py-1"
+          />
+
+          <input
+            type="number"
+            min="0"
+            value={priceMax}
+            onChange={(e) => setPriceMax(e.target.value)}
+            placeholder="Prix max"
+            className="border rounded px-2 py-1"
+          />
+        </div>
+
+        <select
+          value={sort}
+          onChange={(e) => setSort(e.target.value)}
+          className="border rounded px-2 py-1"
+        >
+          <option value="date_desc">Plus récent</option>
+          <option value="price_asc">Prix croissant</option>
+          <option value="price_desc">Prix décroissant</option>
+        </select>
       </div>
 
-      {filteredArticles.length === 0 ? (
-        <div className="text-center py-10 text-gray-500">
-          Aucun article ne correspond à votre recherche.
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {filteredArticles.map((article: Article) => (
+      {isPending && <p>Chargement...</p>}
+
+      {error instanceof Error && (
+        <p className="text-red-600">Erreur : {error.message}</p>
+      )}
+
+      {data && data.length === 0 && (
+        <p className="text-gray-600">
+          Aucun article ne correspond aux filtres.
+        </p>
+      )}
+
+      {data && data.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          {data.map((article) => (
             <ArticleCard key={article.id} article={article} />
           ))}
         </div>
